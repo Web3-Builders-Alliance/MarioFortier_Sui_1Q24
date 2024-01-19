@@ -74,7 +74,7 @@ module prereqs::clowns_and_a_car {
 
         let publisher = package::claim(otw, ctx);
 
-        // Setup name filed Display for Clown objects.
+        // Setup name field Display for Clown objects.
         let keys = vector[utf8(b"name")];
         let values = vector[utf8(b"{name}")];
         let display = display::new_with_fields<Clown>(&publisher, keys, values, ctx);
