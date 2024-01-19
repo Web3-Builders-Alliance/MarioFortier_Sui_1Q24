@@ -1,10 +1,11 @@
-// Application Summary:
+// "Real World" use case summary:
 //   - Anyone can create/delete their own clowns.
 //   - Anyone can race to push/pull their clowns into a single car object with a max capacity of 20.
-//   - Nobody own the car (shared).
-//   - A "clown horn" event is emited when a clown makes it into the car.
-//   - Clowns transfereable only if in the car (clown outside the car are "worthless").
-//   - The freely transfereable BodyShop capability can increase the car capacity.
+//   - Nobody owns the car (shared).
+//   - A "clown horn" is emited when a clown makes it into the car.
+//   - Clown ownership are transferable only if in the car (clowns outside a car are "sad and worthless")
+//   - Clown objects support Display of their name.
+//   - A freely transferable BodyShop capability can increase the car capacity.
 //
 // Covers Sui By Examples sections:
 //   2.3: Entry functions
@@ -12,12 +13,18 @@
 //   2.6: Transfer
 //   2.7: Custom Transfer
 //   2.8: Events
+//   2.9: One-Time-Witness (for Display)
+//   2.11: Object Display
 //   3.1: Capability
+
 module prereqs::clowns_and_a_car {
     use sui::transfer;
     use sui::object::{Self, UID, ID};
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::{TxContext, sender};
+    use std::string::{String, utf8};
     use sui::event;
+    use sui::package;
+    use sui::display;
 
     const INITIAL_CAR_CAPACITY: u64 = 20;    
 
@@ -29,13 +36,16 @@ module prereqs::clowns_and_a_car {
     const EInternalErrorWithCount: u64 = 0x6;
     const ENonTransfereableWorthlessClown: u64 = 0x7;
 
+    struct CLOWNS_AND_A_CAR has drop {} // One-time-witness type.
+
     struct Clown has key {
-        id: UID, 
-        in_the_car: bool 
+        id: UID,                        
+        name: String,
+        in_the_car: bool,
     }
 
     struct Car has key {
-        id: UID,        
+        id: UID,
         capacity: u64,
         clown_count: u64
     }
@@ -45,30 +55,43 @@ module prereqs::clowns_and_a_car {
     }
 
     struct ClownHornEvent has copy, drop {        
-        clown_id: ID
+        clown_id: ID,
+        clown_name: String,
     }
 
-    fun init(ctx: &mut TxContext) {    
-        // Create a single freely transfereable BodyShop capability.
+    fun init( otw: CLOWNS_AND_A_CAR, ctx: &mut TxContext ) {
+        // Create the single freely transferable BodyShop capability.
         transfer::public_transfer(BodyShopCap {
             id: object::new(ctx),
-        }, tx_context::sender(ctx));
+        }, sender(ctx));
 
-        // Create the shared car.
+        // Create the single shared car.
         transfer::share_object( Car {
             id: object::new(ctx),
             capacity: INITIAL_CAR_CAPACITY,
             clown_count: 0
         } );
+
+        let publisher = package::claim(otw, ctx);
+
+        // Setup name filed Display for Clown objects.
+        let keys = vector[utf8(b"name")];
+        let values = vector[utf8(b"{name}")];
+        let display = display::new_with_fields<Clown>(&publisher, keys, values, ctx);
+        display::update_version(&mut display);        
+        transfer::public_transfer(display, sender(ctx));
+
+        transfer::public_transfer(publisher, sender(ctx));
     }
 
-    public entry fun create_clown( ctx: &mut TxContext ) {
+    public entry fun create_clown( name: String, ctx: &mut TxContext ) {
         // The caller is the initial owner.
         let new_clown = Clown {
             id: object::new(ctx),
+            name,
             in_the_car: false
         };
-        transfer::transfer(new_clown, tx_context::sender(ctx));
+        transfer::transfer(new_clown, sender(ctx));
     }
 
     public entry fun transfer_clown( clown: Clown, to: address, _: &mut TxContext ) {
@@ -78,7 +101,7 @@ module prereqs::clowns_and_a_car {
     }
 
     public entry fun delete_clown( clown: Clown, _: &mut TxContext ) {
-        let Clown { id, in_the_car } = clown;
+        let Clown { id, name: _, in_the_car } = clown;
         assert!(in_the_car == false, ECantDeleteClownInCar);
         object::delete(id);
     }
@@ -98,7 +121,7 @@ module prereqs::clowns_and_a_car {
         car.clown_count = car.clown_count - 1;
     }
 
-    public entry fun increase_car_capacity( _: &mut BodyShopCap, car: &mut Car, new_capacity: u64, _: &mut TxContext ) {
+    public entry fun increase_car_capacity( _: &BodyShopCap, car: &mut Car, new_capacity: u64, _: &mut TxContext ) {
         assert!(new_capacity > car.capacity, ECapacityCanOnlyIncrease);
         car.capacity = new_capacity;
     }
@@ -106,7 +129,8 @@ module prereqs::clowns_and_a_car {
     // Utility function...
     fun clown_horn( self: &Clown ) {
         event::emit( ClownHornEvent {
-            clown_id: object::uid_to_inner(&self.id)
+            clown_id: object::uid_to_inner(&self.id),
+            clown_name: self.name
         } );
     }
 
@@ -117,13 +141,19 @@ module prereqs::clowns_and_a_car {
     #[test]
     fun test_simple() {
         let user1 = @0x1;
-        //let user2 = @0x2;
-        let scenario = ts::begin(user1);
-
-        // TODO ...not really testing here...
+        let user2 = @0x2;
+        let scenario = ts::begin(@0x0);
+        
+        // TODO More because...not really testing here.
         {
-            ts::next_tx(&mut scenario, user1);            
-            create_clown(ts::ctx(&mut scenario));
+            ts::next_tx(&mut scenario, user1);
+            let otw = CLOWNS_AND_A_CAR{};
+            init(otw, ts::ctx(&mut scenario));
+        };
+
+        {
+            ts::next_tx(&mut scenario, user2);
+            create_clown(utf8(b"bozo"),ts::ctx(&mut scenario));
         };
 
         ts::end(scenario);
