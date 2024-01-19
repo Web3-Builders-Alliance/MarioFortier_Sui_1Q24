@@ -1,0 +1,9 @@
+# Move build files
+**/build/**/sources/*
+**/build/**/BuildInfo.yaml
+*.mvsm
+*.mv
+output.bpl
+
+# Suibase configuration (specific to developer setup).
+**/Suibase.toml
