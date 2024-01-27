@@ -24,7 +24,8 @@ module bank::bank {
   struct AdminBalance has copy, drop, store {}    
 
   const FEE: u128 = 5; // percent
-
+  public fun fee() : u128 { FEE }
+  
   fun init(ctx: &mut TxContext) {
     transfer::transfer(OwnerCap { id: object::new(ctx) }, sender(ctx));
     let bank = Bank { id: object::new(ctx) };    
@@ -86,21 +87,8 @@ module bank::bank {
     // Withdraw all the balance from UserBalance into a local variable.
     let withdraw_balance = balance::withdraw_all<SUI>(existing_user_balance);
         
-    // Remove withdraw_balance from the Bank balance.
-    let bank_balance = df::borrow_mut<AdminBalance, Balance<SUI>>(
-      &mut self.id,
-      AdminBalance {},
-    );
-    let return_balance = balance::split<SUI>(
-      bank_balance,
-      balance::value<SUI>(&withdraw_balance)
-    );
-
-    // Destroy the local variable (Note: the object is still in df).
-    balance::destroy_zero<SUI>(withdraw_balance);
-
     // Return the coin built from the balance subtracted from the Bank.
-    coin::from_balance<SUI>(return_balance, ctx)
+    coin::from_balance<SUI>(withdraw_balance, ctx)
   }
 
   public fun claim(_: &OwnerCap, self: &mut Bank, ctx: &mut TxContext): Coin<SUI>
@@ -113,4 +101,32 @@ module bank::bank {
     let withdraw_balance = balance::withdraw_all<SUI>(bank_balance);
     coin::from_balance<SUI>(withdraw_balance, ctx)
   }
+
+  public fun balance(self: &Bank, user: address): u64 {
+    let user_balance_key = UserBalance { user: user };
+    let exists = df::exists_with_type<UserBalance, Balance<SUI>>(
+       &self.id,
+       user_balance_key
+    );
+    let ret_value = 0u64;
+    if (exists) {
+      let existing_user_balance = df::borrow(&self.id, user_balance_key);
+      ret_value=balance::value<SUI>(existing_user_balance);
+    };
+    ret_value
+  }
+
+  public fun admin_balance(self: &Bank): u64 {
+    let bank_balance = df::borrow<AdminBalance, Balance<SUI>>(
+      &self.id,
+      AdminBalance {},
+    );
+    balance::value<SUI>(bank_balance)
+  }
+
+  #[test_only]
+  public fun init_for_testing(ctx: &mut TxContext) {
+    init(ctx);
+  }  
 }
+
