@@ -1,0 +1,15 @@
+{
+    "cSpell.diagnosticLevel": "Hint",
+    "cSpell.enableFiletypes": [
+        "move"
+    ],  
+    "cSpell.customDictionaries": {
+        "cSpell_dictionary": {
+            "name": "Project Dictionary",
+            "path": "${workspaceRoot}/.vscode/project_dictionary.txt",
+            "description": "Words used in this project",
+            "addWords": true
+        },
+    }
+    
+}
