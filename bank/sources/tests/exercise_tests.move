@@ -3,7 +3,7 @@ module bank::bank_tests {
     use sui::test_utils::assert_eq;
     use sui::coin::{mint_for_testing, burn_for_testing};
     use sui::test_scenario as ts;    
-    use bank::bank::{Self, Bank};
+    use bank::bank::{Self, Bank, ENoFund};
     use sui::sui::{SUI};
 
     const ADMIN: address = @0xBEEF;
@@ -104,8 +104,23 @@ module bank::bank_tests {
         ts::end(scenario_val);        
     }
 
-    #[test]   
-    // #[expected_failure]
+    #[test]
+    #[expected_failure( abort_code = ENoFund )]
+    fun test_withdraw_no_fund() {
+        let scenario_val = init_test_helper();
+        let scenario = &mut scenario_val;
+        ts::next_tx(scenario, ALICE);
+        {
+            let bank = ts::take_shared<Bank>(scenario);
+            // Should abort here...
+            let coin = bank::withdraw(&mut bank, ts::ctx(scenario));            
+            let _value = burn_for_testing(coin);            
+            ts::return_shared(bank);
+        };
+        ts::end(scenario_val);        
+    }
+
+    #[test]
     fun claim_test_empty() {
         let scenario_val = init_test_helper();
         let scenario = &mut scenario_val;
