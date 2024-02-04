@@ -1,0 +1,5 @@
+[meta]
+creation_timestamp = "1706548860595588 2024-01-29 12:21:00.595588239 -05:00"
+
+[packages]
+SuiBank = { uuid = "SA73T7N36DNQGUAI5P5XBY6XRI", uuid_custom = false }
