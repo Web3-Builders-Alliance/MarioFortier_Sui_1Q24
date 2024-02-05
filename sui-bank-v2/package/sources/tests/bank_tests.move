@@ -23,8 +23,20 @@ module sui_bank::bank_tests {
         scenario_val
     }
 
-    fun calculate_fee(value: u64): u64 {
-        (((value as u128) * bank::fee() / 100) as u64)
+    // Calculate fee for a deposit.
+    fun calculate_fee(bank: &Bank, value: u64): u64 {
+        (((value as u128) * bank::fee(bank) / 100) as u64)
+    }
+
+    // Same as calculate_fee, but doing its own txn.
+    fun calculate_fee_helper(scenario: &mut ts::Scenario, value: u64 ): u64 {
+        ts::next_tx(scenario, ADMIN);
+        {
+            let bank = ts::take_shared<Bank>(scenario);            
+            let fee_collected = calculate_fee(&bank, value);
+            ts::return_shared(bank);
+            fee_collected
+        }
     }
 
     // Simulate deposit. Return the amount deposited minus fee.
@@ -36,10 +48,10 @@ module sui_bank::bank_tests {
         };        
     }
 
+    // Deposit the specified amount. Returns the fee amount collected by the bank.    
     fun deposit_helper(scenario: &mut ts::Scenario, user: address, deposit: u64): u64 {
+        
         assert!(deposit > 0, EUnexpectedZeroDeposit);
-        let fee = calculate_fee(deposit);
-        let user_balance_increase = deposit - fee;
 
         // Create account if does not exists.        
         ts::next_tx(scenario, user);
@@ -54,6 +66,8 @@ module sui_bank::bank_tests {
         {
             let coin = mint_for_testing<SUI>(deposit, ts::ctx(scenario));
             let bank = ts::take_shared<Bank>(scenario);
+            let fee = calculate_fee(&bank,deposit);
+            let account_increase = deposit - fee;
             
             let account = ts::take_from_sender<bank::Account>(scenario);            
             let user_before = bank::balance(&account);
@@ -62,14 +76,14 @@ module sui_bank::bank_tests {
             let user_after = bank::balance(&account);
             let bank_after = bank::admin_balance(&bank);
             // Verify UserBalance properly increased.
-            assert_eq(user_after-user_before, user_balance_increase);
+            assert_eq(user_after-user_before, account_increase);
             // Verify BankBalance properly increased by the fee amount.
             assert_eq(bank_after-bank_before, fee);
 
             ts::return_shared(bank);
             ts::return_to_sender(scenario, account);
-        };
-        user_balance_increase
+            fee
+        }        
     }
 
     fun assert_bank_balance(scenario: &mut ts::Scenario, expected: u64) {
@@ -103,16 +117,18 @@ module sui_bank::bank_tests {
         create_account_helper(scenario, ALICE);
 
         // The helpers includes some unit testing as well...
-        let user_balance = deposit_helper(scenario, ALICE, deposit);
+        let fee_collected = deposit_helper(scenario, ALICE, deposit);
         
         // Do it again to verify the fee cumulates.
-        user_balance = user_balance + deposit_helper(scenario, ALICE, deposit);
-        assert_bank_balance(scenario, calculate_fee(deposit)*2);
+        fee_collected = fee_collected + deposit_helper(scenario, ALICE, deposit);
+        let expected_total_fee = calculate_fee_helper(scenario, deposit*2);
+        assert_eq(fee_collected, expected_total_fee); // Sanity test of the helper itself.
 
-        let expected_user_balance = deposit*2 - calculate_fee(deposit)*2;    
-        assert_eq(user_balance, expected_user_balance);
-
-        // Alternative way to verify user account (through API).
+        // Verify fee accumulated on-chain.
+        assert_bank_balance(scenario, expected_total_fee );
+                
+        // Verify that the user balance on-chain.
+        let expected_user_balance = deposit*2 - expected_total_fee;
         assert_account_balance(scenario, ALICE, expected_user_balance);
 
         ts::end(scenario_val);
@@ -123,16 +139,17 @@ module sui_bank::bank_tests {
         let scenario_val = init_test_helper();
         let scenario = &mut scenario_val;
         let deposit = 100;
-        let fee = calculate_fee(deposit);
+        let fee = calculate_fee_helper(scenario, deposit);
 
         create_account_helper(scenario, ALICE);
-        let user_balance = deposit_helper(scenario, ALICE, deposit);
+        let fee_collected = deposit_helper(scenario, ALICE, deposit);
+        let user_balance = deposit - fee_collected;
 
         ts::next_tx(scenario, ALICE);
         {
             let bank = ts::take_shared<Bank>(scenario);
             let account = ts::take_from_sender<bank::Account>(scenario);            
-            let coin = bank::withdraw(&mut bank, &mut account, deposit-fee, ts::ctx(scenario));
+            let coin = bank::withdraw(&mut bank, &mut account, user_balance, ts::ctx(scenario));
             let value = burn_for_testing(coin);
 
             // Verify UserBalance
@@ -198,10 +215,11 @@ module sui_bank::bank_tests {
 
         // Make two deposits.
         let deposit = 100;
-        let fee = calculate_fee(deposit);
+        let fee = calculate_fee_helper(scenario, deposit);
         create_account_helper(scenario, ALICE);
-        let user_balance = deposit_helper(scenario, ALICE, deposit);
-        user_balance = user_balance + deposit_helper(scenario, ALICE, deposit);
+        let fee_collected = deposit_helper(scenario, ALICE, deposit);
+        fee_collected = fee_collected + deposit_helper(scenario, ALICE, deposit);
+        let user_balance = deposit*2 - fee_collected;
 
         // Call claim as the ADMIN.
         ts::next_tx(scenario, ADMIN);

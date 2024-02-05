@@ -19,23 +19,32 @@ module sui_bank::bank {
   const EBorrowAmountIsTooHigh: u64 = 1;
   const EAccountMustBeEmpty: u64 = 2;
   const EPayYourLoan: u64 = 3;
+  const EOutOfRangeFee: u64 = 4;
+  const EOutOfRangeLTV: u64 = 5;
 
-  const FEE: u128 = 5;
-  const EXCHANGE_RATE: u128 = 40;
+  const MIN_FEE: u8 = 0;
+  const MAX_FEE: u8 = 15;
+  const DEFAULT_FEE: u8 = 5;
+
+  const MIN_LTV: u8 = 1; // 1 Sui = 0.01 SUI_DOLLAR
+  const MAX_LTV: u8 = 100; // 1 Sui = 1 SUI_DOLLAR
+  const DEFAULT_LTV: u8 = 40;  // 1 SUI = 0.4 SUI_DOLLAR
   
-  public fun fee(): u128 {
-    FEE
+  public fun fee(self: &Bank): u128 {
+    self.fee
   }
 
-  public fun exchange_rate(): u128 {
-    EXCHANGE_RATE
+  public fun ltv(self: &Bank): u128 {
+    self.ltv    
   }
 
   // === Structs ===
   struct Bank has key {
     id: UID,
     balance: Balance<SUI>, // Custody of Customer SUI coins.
-    admin_balance: Balance<SUI>, // Fee collected for the bank.
+    admin_balance: Balance<SUI>, // Fee collected by the bank.
+    fee: u128, // [MIN_FEE..MAX_FEE] % charged on deposits
+    ltv: u128, // [MIN_LTV..MAX_LTV] Sui to Sui Dollar exchange rate.
   }
 
   struct Account has key, store {
@@ -54,8 +63,10 @@ module sui_bank::bank {
     transfer::share_object(
       Bank {
         id: object::new(ctx),
-        balance: balance::zero(), // Money of the customers "Custody of user account"
-        admin_balance: balance::zero() // Fee
+        balance: balance::zero(),
+        admin_balance: balance::zero(),
+        fee: (DEFAULT_FEE as u128),
+        ltv: (DEFAULT_LTV as u128)
       }
     );
 
@@ -89,7 +100,7 @@ module sui_bank::bank {
 
   public fun deposit(self: &mut Bank, account: &mut Account, token: Coin<SUI>, ctx: &mut TxContext) {
     let value = coin::value(&token);
-    let deposit_value = value - (((value as u128) * FEE / 100) as u64);
+    let deposit_value = value - (((value as u128) * self.fee / 100) as u64);
     let admin_fee = value - deposit_value;
 
     let admin_coin = coin::split(&mut token, admin_fee, ctx);
@@ -108,8 +119,8 @@ module sui_bank::bank {
     coin::from_balance(balance::split(&mut self.balance, value), ctx)
   }
 
-  public fun borrow(account: &mut Account, cap: &mut CapWrapper, value: u64, ctx: &mut TxContext): Coin<SUI_DOLLAR> {
-    let max_borrow_amount = (((account.balance as u128) * EXCHANGE_RATE / 100) as u64);
+  public fun borrow(self: &mut Bank, account: &mut Account, cap: &mut CapWrapper, value: u64, ctx: &mut TxContext): Coin<SUI_DOLLAR> {
+    let max_borrow_amount = (((account.balance as u128) * self.ltv / 100) as u64);
 
     assert!(max_borrow_amount >= account.debt + value, EBorrowAmountIsTooHigh);
 
@@ -135,7 +146,7 @@ module sui_bank::bank {
     // Convert to SUI_DOLLAR at exchange rate
     // 1 SUI = 0.4 SUI_DOLLAR
     let coin_value = coin::value(&coin_in);
-    let mint_amount = (((coin_value as u128) * EXCHANGE_RATE / 100) as u64);
+    let mint_amount = (((coin_value as u128) * self.ltv / 100) as u64);
 
     // Take custody of the coin_in    
     let _ = balance::join<SUI>(&mut self.balance, coin::into_balance(coin_in));
@@ -151,7 +162,7 @@ module sui_bank::bank {
     // Convert to SUI at exchange rate
     // let return_amount = (((burn_amount as u128) * (100 + EXCHANGE_RATE)) as u64);
     // TODO Suspense is that OK!?
-    let return_amount = (((burn_amount as u128) / EXCHANGE_RATE * 100) as u64);
+    let return_amount = (((burn_amount as u128) / self.ltv * 100) as u64);
 
     // Return SUI from balance
     let return_balance = balance::split(&mut self.balance, return_amount);
@@ -164,6 +175,16 @@ module sui_bank::bank {
     let value = balance::value(&self.admin_balance);
     coin::take(&mut self.admin_balance, value, ctx)
   }    
+
+  public fun adjust_fee(_: &OwnerCap, self: &mut Bank, new_fee: u8 ) {
+    assert!(new_fee >= MIN_FEE && new_fee <= MAX_FEE, EOutOfRangeFee);
+    self.fee = (new_fee as u128);
+  }
+
+  public fun adjust_ltv(_: &OwnerCap, self: &mut Bank, new_ltv: u8 ) {
+    assert!(new_ltv >= MIN_LTV && new_ltv <= MAX_LTV, EOutOfRangeLTV);
+    self.fee = (new_ltv as u128);
+  }
 
   // === Public-Friend Functions ===
   
