@@ -28,4 +28,9 @@ module sui_bank::amm {
       ctx
     )
   }
+
+  #[test_only]
+  public fun init_for_testing( _ctx: &TxContext ) {
+    // Nothing for now.
+  }  
 }

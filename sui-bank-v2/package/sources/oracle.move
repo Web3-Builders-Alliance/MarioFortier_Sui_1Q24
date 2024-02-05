@@ -35,8 +35,6 @@ module sui_bank::oracle {
   // === Public-Mutative Functions ===
 
   public fun create_oracle(ctx: &mut TxContext) : SaferOracle {
-
-
     // Instantiate the aggregator.
     let aggregator = switchboard::aggregator::new<SecretKey>(
             b"test", // name: 

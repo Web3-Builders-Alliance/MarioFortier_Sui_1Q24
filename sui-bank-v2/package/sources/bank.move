@@ -13,6 +13,11 @@ module sui_bank::bank {
 
   #[test_only]
   friend sui_bank::bank_tests;
+  #[test_only]
+  friend sui_bank::amm_tests;
+  #[test_only]
+  friend sui_bank::sui_dollar_tests;
+  
 
   // === Constants ===
   const ENotEnoughBalance: u64 = 0;
