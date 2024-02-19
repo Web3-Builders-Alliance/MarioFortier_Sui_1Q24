@@ -1,4 +1,4 @@
-Work do in class recording on Feb 19 2024
+Work done in class recording  ( Feb 19 2024 )
 
 Large portion of code originally from:
   [https://github.com/josemvcerqueira/metaschool/tree/main/dex](https://github.com/josemvcerqueira/metaschool/tree/main/dex)
