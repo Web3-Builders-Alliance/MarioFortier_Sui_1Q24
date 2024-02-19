@@ -1,0 +1,5 @@
+# Move build artifacts
+**/build
+
+# Suibase configuration (specific to developer setup).
+**/Suibase.toml
