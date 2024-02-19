@@ -1,5 +1,5 @@
 #[test_only]
-module test_kiosk::test_kiosk {
+module test_kiosk::test_royalty {
   use std::option;
 
   use sui::transfer;
@@ -12,13 +12,12 @@ module test_kiosk::test_kiosk {
   use sui::test_utils::assert_eq;
   use sui::test_scenario::{Self as ts, next_tx, ctx};
 
+  const OWNER: address = @0x20;
+  const ALICE: address = @0x30;
+  const BOB: address = @0x40;
+  const ARTIST: address = @0x50;
+
   use test_kiosk::nft::NFT;
-
-  const OWNER: address = @0x2;
-  const ALICE: address = @0x3;
-  const BOB: address = @0x4;
-  const ARTIST: address = @0x5;
-
 
   // 1 - Define Policy
   // 2 - Place
@@ -32,7 +31,7 @@ module test_kiosk::test_kiosk {
   #[test]
   fun test_case_one() {
 
-    let scenario = ts::begin(@0x1);
+    let scenario = ts::begin(OWNER);
 
     let scenario_mut = &mut scenario;
 
@@ -41,6 +40,8 @@ module test_kiosk::test_kiosk {
     {
       // Define a policy for an item
       let (policy, policy_cap) = transfer_policy::new_for_testing<NFT>(ctx(scenario_mut));
+
+      test_kiosk::my_kiosk::init_rules(&mut policy, &policy_cap, ARTIST );
 
       transfer::public_share_object(policy);
       transfer::public_transfer(policy_cap, ARTIST);
@@ -67,7 +68,7 @@ module test_kiosk::test_kiosk {
       let our_kiosk = ts::take_shared<Kiosk>(scenario_mut);
       let cap = ts::take_from_sender<KioskOwnerCap>(scenario_mut);
       let policy = ts::take_shared<TransferPolicy<NFT>>(scenario_mut);
-
+      
       assert_eq(kiosk::has_item(&our_kiosk, nft_id), false);
 
       kiosk::place(&mut our_kiosk, &cap, nft);
@@ -114,6 +115,8 @@ module test_kiosk::test_kiosk {
 
       assert_eq(kiosk::has_item(&our_kiosk, nft_id), false);
 
+      jksflgjklsdfghjksdf
+      
       transfer_policy::confirm_request(&policy, request);
 
       test_kiosk::nft::burn(nft);
@@ -220,5 +223,4 @@ module test_kiosk::test_kiosk {
     
     ts::end(scenario);
   }
-
 }
