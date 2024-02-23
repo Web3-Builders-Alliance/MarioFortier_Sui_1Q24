@@ -8,12 +8,14 @@ import Pages from "../pages/pages";
 import Community from "../pages/community";
 import Contact from "../pages/contact";
 import Collection from "../pages/collection";
+import Profile from "../pages/profile";
 
 import { rootLoader } from "./loaders/root";
 import { homeLoader } from "./loaders/home";
 import { exploreLoader } from "./loaders/explore";
 import { communityLoader } from "./loaders/community";
 import { aboutLoader } from "./loaders/about";
+import { profileLoader } from "./loaders/profile";
 import { collectionLoader } from './loaders/collection';
 
 export const ROUTES = ["Home", "Explore", "Pages", "Community", "Contact"];
@@ -48,6 +50,11 @@ export const router = createBrowserRouter([
         path: "/contact",
         element: <Contact />,
         leader: aboutLoader,
+      },
+      {
+        path: "/profile",
+        element: <Profile />,
+        leader: profileLoader,
       },
       {
         path: "*",

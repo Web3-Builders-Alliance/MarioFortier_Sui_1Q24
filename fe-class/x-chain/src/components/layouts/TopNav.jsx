@@ -6,12 +6,14 @@ import Link from '@mui/material/Link';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 
+import { ConnectButton } from "@suiet/wallet-kit";
+import "@suiet/wallet-kit/style.css"; 
+
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import logo from '../../assets/logo.svg';
 
 import { ROUTES } from "../../router/index";
-import { ConnectButton } from '@suiet/wallet-kit';
 
 export default function TopNav() {
   const navigate = useNavigate();
@@ -58,7 +60,7 @@ export default function TopNav() {
               */}
               {/*<Button variant="contained" color="primary">Connect Wallet</Button>*/}
               <ConnectButton />
-              <Avatar sx={{ marginLeft: 1, marginTop: 1 }} alt="user"></Avatar>
+              <Avatar sx={{ marginLeft: 1, marginTop: 1 }} alt="user" onClick={redirect.bind(null,"profile")}></Avatar>
             </Stack>
         </Grid>
     </Grid>

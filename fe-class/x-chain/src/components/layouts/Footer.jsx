@@ -73,6 +73,7 @@ export default function Footer() {
                // maxHeight: 592,
                maxWidth: 1100,
                maxHeight: 350,
+               pt: 10
            }}>
 
     <Stack container direction="column"

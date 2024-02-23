@@ -38,17 +38,18 @@ export default function Hero() {
     <Grid container 
         justifyContent="space-between"
         alignItems="center" 
-        height="85hv">
+        height="85hv"
+        width={1400}>
         <Grid item sm={12} md={6} sx={{p:4, position: 'relative'}}>            
-                <div style={{top: 0, left: 0, zIndex: 0, position: 'absolute'}}
+                <div style={{top: 25, left: 35, zIndex: 0, position: 'absolute'}}
                 // position: 'absolute' 
                 >                 
-                <Box item height={600} width={500} sx={{                            
+                <Box item height={480} width={620} sx={{                            
                             background: "linear-gradient(90deg, #FCB808 0%, #F9075E 100%)",
                             transform: 'rotate(-2deg)'} } ></Box>
                 </div>
                 
-                <div style={{top: 0, left: 0, zIndex: 1}}>
+                <div height={250} width={400} style={{top: 0, left: 0, zIndex: 1}}>
                 <Carousel sx={{ background: "#161616", 
                             borderColer: "light-grey",
                             borderRadius: '13px', 
@@ -59,7 +60,7 @@ export default function Hero() {
                     interval={5000}>
                     {items.map((item, i) => (
                         <div key={(item, i)}>
-                            <img src={item.image} alt="{item.name}" height={500} width='100%' style={{borderRadius: "16px", padding: "10px"}}/>
+                            <img src={item.image} alt="{item.name}" height={250} width={400} style={{borderRadius: "16px", padding: "1px"}}/>
                             <Typography>{item.name}</Typography>
                         </div>
                     ))}
